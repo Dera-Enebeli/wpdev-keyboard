@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FORM // 001 — Technical Blueprint</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,300;0,400;0,500;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: 'JetBrains Mono', monospace;
+  background: #0d0d0d;
+  color: rgba(255, 255, 255, 0.9);
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Grid overlay ── */
+.grid-overlay {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background-image:
+    repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 39px,
+      rgba(0, 255, 255, 0.04) 39px,
+      rgba(0, 255, 255, 0.04) 40px
+    ),
+    repeating-linear-gradient(
+      90deg,
+      transparent,
+      transparent 39px,
+      rgba(0, 255, 255, 0.04) 39px,
+      rgba(0, 255, 255, 0.04) 40px
+    );
+}
+
+/* ── Spacer for 400vh scroll ── */
+.scroll-spacer { height: 400vh; }
+
+/* ── Loading screen ── */
+.loading-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: #0d0d0d;
+  transition: opacity 0.8s ease, visibility 0.8s ease;
+}
+.loading-screen.hidden {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.spinner {
+  width: 28px;
+  height: 28px;
+  border: 1.5px solid rgba(0, 229, 255, 0.15);
+  border-top-color: #00e5ff;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin-bottom: 20px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.loading-label {
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0.2em;
+  color: rgba(0, 229, 255, 0.6);
+  text-transform: uppercase;
+}
+.loading-percent {
+  font-size: 10px;
+  font-weight: 300;
+  letter-spacing: 0.15em;
+  color: rgba(0, 229, 255, 0.35);
+  margin-top: 8px;
+}
+
+/* ── Fixed UI wrapper ── */
+.ui-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  pointer-events: none;
+}
+
+/* ── Top HUD bar ── */
+.hud-bar {
+  position: absolute;
+  top: 28px;
+  left: 32px;
+  right: 32px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  pointer-events: none;
+}
+.hud-bar::after {
+  content: '';
+  position: absolute;
+  bottom: -12px;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: rgba(0, 229, 255, 0.15);
+}
+
+.hud-left, .hud-right {
+  font-size: 10px;
+  font-weight: 400;
+  letter-spacing: 0.35em;
+  text-transform: uppercase;
+  color: rgba(0, 229, 255, 0.55);
+}
+.hud-left span, .hud-right span {
+  color: rgba(255, 255, 255, 0.9);
+  font-weight: 500;
+}
+
+/* ── Tick marks (left edge) ── */
+.tick-marks {
+  position: absolute;
+  top: 80px;
+  left: 32px;
+  bottom: 80px;
+  width: 12px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  pointer-events: none;
+}
+.tick-marks .tick {
+  position: relative;
+  width: 100%;
+  height: 1px;
+  background: rgba(0, 229, 255, 0.12);
+}
+.tick-marks .tick::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: -3px;
+  width: 1px;
+  height: 7px;
+  background: rgba(0, 229, 255, 0.12);
+}
+.tick-marks .tick.long::after { height: 11px; top: -5px; }
+.tick-label {
+  position: absolute;
+  left: 18px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 7px;
+  font-weight: 300;
+  letter-spacing: 0.15em;
+  color: rgba(0, 229, 255, 0.2);
+  white-space: nowrap;
+}
+
+/* ── Section heading (over canvas) ── */
+.section-label {
+  position: absolute;
+  bottom: 100px;
+  left: 50%;
+  transform: translateX(-50%);
+  text-align: center;
+  pointer-events: none;
+  transition: opacity 0.4s ease;
+}
+.section-label .title {
+  font-size: 15px;
+  font-weight: 500;
+  letter-spacing: 0.5em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.9);
+  margin-bottom: 10px;
+  position: relative;
+  display: inline-block;
+}
+.section-label .title::before,
+.section-label .title::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  width: 20px;
+  height: 1px;
+  background: rgba(0, 229, 255, 0.2);
+}
+.section-label .title::before { right: calc(100% + 16px); }
+.section-label .title::after  { left: calc(100% + 16px); }
+
+.section-label .subtitle {
+  font-size: 10px;
+  font-weight: 300;
+  letter-spacing: 0.3em;
+  color: rgba(0, 229, 255, 0.45);
+  text-transform: uppercase;
+}
+
+/* ── Canvas placeholder ── */
+.canvas-area {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(880px, 75vw);
+  aspect-ratio: 1280 / 720;
+  pointer-events: none;
+  border: 1px solid rgba(0, 229, 255, 0.08);
+  background: rgba(0, 0, 0, 0.5);
+}
+.canvas-area::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border: 1px solid rgba(0, 229, 255, 0.06);
+}
+.canvas-area::after {
+  content: 'CANVAS // 1280×720';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 9px;
+  letter-spacing: 0.3em;
+  color: rgba(0, 229, 255, 0.15);
+  text-transform: uppercase;
+  font-weight: 300;
+}
+.canvas-area .crosshair-h,
+.canvas-area .crosshair-v {
+  position: absolute;
+  background: rgba(0, 229, 255, 0.05);
+}
+.canvas-area .crosshair-h {
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 1px;
+}
+.canvas-area .crosshair-v {
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+}
+
+/* ── Corner brackets around canvas ── */
+.corner-bracket {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border-color: rgba(0, 229, 255, 0.12);
+  border-style: solid;
+  border-width: 0;
+}
+.corner-bracket.tl { top: -6px; left: -6px; border-top-width: 1px; border-left-width: 1px; }
+.corner-bracket.tr { top: -6px; right: -6px; border-top-width: 1px; border-right-width: 1px; }
+.corner-bracket.bl { bottom: -6px; left: -6px; border-bottom-width: 1px; border-left-width: 1px; }
+.corner-bracket.br { bottom: -6px; right: -6px; border-bottom-width: 1px; border-right-width: 1px; }
+
+/* ── Progress meter ── */
+.progress-meter {
+  position: absolute;
+  right: 32px;
+  bottom: 100px;
+  width: 120px;
+  pointer-events: none;
+}
+.progress-meter .meter-label {
+  font-size: 8px;
+  font-weight: 400;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: rgba(0, 229, 255, 0.4);
+  margin-bottom: 8px;
+  text-align: right;
+}
+.progress-meter .meter-track {
+  width: 100%;
+  height: 1px;
+  background: rgba(0, 229, 255, 0.12);
+  position: relative;
+}
+.progress-meter .meter-fill {
+  height: 100%;
+  width: 0%;
+  background: #00e5ff;
+  transition: width 0.1s linear;
+  position: relative;
+}
+.progress-meter .meter-fill::after {
+  content: '';
+  position: absolute;
+  right: -3px;
+  top: -2px;
+  width: 5px;
+  height: 5px;
+  background: #00e5ff;
+}
+.progress-meter .meter-pct {
+  font-size: 8px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  color: rgba(0, 229, 255, 0.6);
+  text-align: right;
+  margin-top: 6px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Scroll indicator ── */
+.scroll-indicator {
+  position: absolute;
+  bottom: 32px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  pointer-events: none;
+}
+.scroll-indicator .scroll-line {
+  width: 1px;
+  height: 24px;
+  background: rgba(0, 229, 255, 0.2);
+  position: relative;
+  overflow: hidden;
+}
+.scroll-indicator .scroll-line::after {
+  content: '';
+  position: absolute;
+  top: -4px;
+  left: 0;
+  width: 100%;
+  height: 8px;
+  background: #00e5ff;
+  animation: scrollPulse 2s ease-in-out infinite;
+}
+@keyframes scrollPulse {
+  0%   { top: -8px; }
+  100% { top: calc(100% + 4px); }
+}
+.scroll-indicator .scroll-label {
+  font-size: 7px;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: rgba(0, 229, 255, 0.25);
+}
+
+/* ── Right measurement edge ── */
+.measure-edge {
+  position: absolute;
+  right: 32px;
+  top: 80px;
+  bottom: 80px;
+  width: 1px;
+  background: rgba(0, 229, 255, 0.06);
+  pointer-events: none;
+}
+.measure-edge .measure-tick {
+  position: absolute;
+  right: 0;
+  width: 6px;
+  height: 1px;
+  background: rgba(0, 229, 255, 0.08);
+}
+.measure-edge .measure-tick:nth-child(1)  { top: 0; }
+.measure-edge .measure-tick:nth-child(2)  { top: 25%; }
+.measure-edge .measure-tick:nth-child(3)  { top: 50%; }
+.measure-edge .measure-tick:nth-child(4)  { top: 75%; }
+.measure-edge .measure-tick:nth-child(5)  { bottom: 0; top: auto; }
+.measure-edge .measure-tick.long { width: 10px; background: rgba(0, 229, 255, 0.12); }
+
+/* ── Footer ── */
+.footer {
+  position: relative;
+  z-index: 1;
+  padding: 60px 32px 40px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  border-top: 1px solid rgba(0, 229, 255, 0.08);
+  margin-top: 400vh;
+}
+.footer .footer-left {
+  font-size: 9px;
+  font-weight: 400;
+  letter-spacing: 0.35em;
+  text-transform: uppercase;
+  color: rgba(0, 229, 255, 0.4);
+}
+.footer .footer-right {
+  font-size: 9px;
+  font-weight: 300;
+  letter-spacing: 0.2em;
+  color: rgba(0, 229, 255, 0.3);
+  text-align: right;
+}
+.footer .footer-right .spec-line {
+  font-size: 7px;
+  color: rgba(0, 229, 255, 0.15);
+  margin-top: 4px;
+  letter-spacing: 0.15em;
+}
+
+/* ── Scroll-triggered sections ── */
+.scroll-section {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.5s ease;
+}
+.scroll-section.active { opacity: 1; }
+
+/* ── Measurement callouts ── */
+.callout-line {
+  position: absolute;
+  pointer-events: none;
+}
+.callout-line.h-left {
+  left: 52px;
+  top: 50%;
+  width: 60px;
+  height: 1px;
+  border-top: 1px solid rgba(0, 229, 255, 0.08);
+}
+.callout-line.h-left::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: -3px;
+  height: 7px;
+  width: 1px;
+  background: rgba(0, 229, 255, 0.08);
+}
+.callout-line.h-left::after {
+  content: attr(data-label);
+  position: absolute;
+  left: 8px;
+  top: -4px;
+  font-size: 6px;
+  letter-spacing: 0.15em;
+  color: rgba(0, 229, 255, 0.15);
+  text-transform: uppercase;
+  font-weight: 300;
+  white-space: nowrap;
+}
+.callout-line.h-right {
+  right: 52px;
+  top: 50%;
+  width: 60px;
+  height: 1px;
+  border-top: 1px solid rgba(0, 229, 255, 0.08);
+}
+.callout-line.h-right::before {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: -3px;
+  height: 7px;
+  width: 1px;
+  background: rgba(0, 229, 255, 0.08);
+}
+.callout-line.h-right::after {
+  content: attr(data-label);
+  position: absolute;
+  right: 8px;
+  top: -4px;
+  font-size: 6px;
+  letter-spacing: 0.15em;
+  color: rgba(0, 229, 255, 0.15);
+  text-transform: uppercase;
+  font-weight: 300;
+  white-space: nowrap;
+}
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .hud-bar { top: 20px; left: 20px; right: 20px; }
+  .hud-left, .hud-right { font-size: 8px; letter-spacing: 0.25em; }
+  .tick-marks { display: none; }
+  .measure-edge { display: none; }
+  .canvas-area { width: calc(100vw - 64px); }
+  .section-label .title { font-size: 12px; letter-spacing: 0.35em; }
+  .section-label .subtitle { font-size: 8px; }
+  .progress-meter { right: 20px; bottom: 70px; width: 90px; }
+  .callout-line { display: none; }
+  .footer { padding: 40px 20px 28px; flex-direction: column; gap: 12px; align-items: flex-start; }
+}
+</style>
+</head>
+<body>
+
+<!-- Loading screen -->
+<div class="loading-screen" id="loadingScreen">
+  <div class="spinner"></div>
+  <div class="loading-label">Loading...</div>
+  <div class="loading-percent" id="loadingPercent">0%</div>
+</div>
+
+<!-- Grid overlay -->
+<div class="grid-overlay"></div>
+
+<!-- Scroll spacer -->
+<div class="scroll-spacer"></div>
+
+<!-- Section 0: The Whole -->
+<div class="scroll-section" id="section0">
+  <div class="section-label" style="opacity: 1;">
+    <div class="title">The Whole.</div>
+    <div class="subtitle">Before the first fracture.</div>
+  </div>
+</div>
+
+<!-- Section 1: Unbinding -->
+<div class="scroll-section active" id="section1">
+  <div class="section-label" style="opacity: 1;">
+    <div class="title">Unbinding.</div>
+    <div class="subtitle">One piece yields to another.</div>
+  </div>
+</div>
+
+<!-- Section 2: Suspended -->
+<div class="scroll-section" id="section2">
+  <div class="section-label">
+    <div class="title">Suspended.</div>
+    <div class="subtitle">Held open in perfect disorder.</div>
+  </div>
+</div>
+
+<!-- Section 3: Return -->
+<div class="scroll-section" id="section3">
+  <div class="section-label">
+    <div class="title">Return.</div>
+    <div class="subtitle">Every part finds its place.</div>
+  </div>
+</div>
+
+<!-- Fixed UI layer -->
+<div class="ui-layer">
+  <!-- HUD bar -->
+  <div class="hud-bar">
+    <div class="hud-left"><span>FORM</span> // 001</div>
+    <div class="hud-right"><span>DECONSTRUCTION</span></div>
+  </div>
+
+  <!-- Left tick marks -->
+  <div class="tick-marks">
+    <div><div class="tick long"></div><div class="tick-label">Y0</div></div>
+    <div><div class="tick"></div><div class="tick-label">Y25</div></div>
+    <div><div class="tick long"></div><div class="tick-label">Y50</div></div>
+    <div><div class="tick"></div><div class="tick-label">Y75</div></div>
+    <div><div class="tick long"></div><div class="tick-label">Y100</div></div>
+  </div>
+
+  <!-- Right measurement edge -->
+  <div class="measure-edge">
+    <div class="measure-tick long"></div>
+    <div class="measure-tick"></div>
+    <div class="measure-tick long"></div>
+    <div class="measure-tick"></div>
+    <div class="measure-tick long"></div>
+  </div>
+
+  <!-- Measurement callouts -->
+  <div class="callout-line h-left" data-label="section a-a"></div>
+  <div class="callout-line h-right" data-label="section b-b"></div>
+
+  <!-- Canvas placeholder -->
+  <div class="canvas-area">
+    <div class="crosshair-h"></div>
+    <div class="crosshair-v"></div>
+    <div class="corner-bracket tl"></div>
+    <div class="corner-bracket tr"></div>
+    <div class="corner-bracket bl"></div>
+    <div class="corner-bracket br"></div>
+  </div>
+
+  <!-- Section heading (dynamic, controlled by JS) -->
+  <div class="section-label" id="dynamicSection">
+    <div class="title" id="sectionTitle">Unbinding.</div>
+    <div class="subtitle" id="sectionSubtitle">One piece yields to another.</div>
+  </div>
+
+  <!-- Progress meter -->
+  <div class="progress-meter">
+    <div class="meter-label">Progress</div>
+    <div class="meter-track">
+      <div class="meter-fill" id="progressFill" style="width: 0%;"></div>
+    </div>
+    <div class="meter-pct" id="progressPct">00.0%</div>
+  </div>
+
+  <!-- Scroll indicator -->
+  <div class="scroll-indicator">
+    <div class="scroll-label">Scroll</div>
+    <div class="scroll-line"></div>
+  </div>
+</div>
+
+<!-- Footer -->
+<div class="footer">
+  <div class="footer-left">FORM // 001</div>
+  <div class="footer-right">
+    &copy; 2026<br>
+    <div class="spec-line">frame 1280×720 &nbsp;·&nbsp; 400vh &nbsp;·&nbsp; rev 02</div>
+  </div>
+</div>
+
+<script>
+// ── Loading screen ──
+(function() {
+  const screen = document.getElementById('loadingScreen');
+  const pct    = document.getElementById('loadingPercent');
+  let progress = 0;
+  const interval = setInterval(() => {
+    progress += Math.random() * 18 + 3;
+    if (progress > 100) progress = 100;
+    pct.textContent = Math.round(progress) + '%';
+    if (progress >= 100) {
+      clearInterval(interval);
+      setTimeout(() => screen.classList.add('hidden'), 300);
+    }
+  }, 120);
+})();
+
+// ── Scroll-linked progress and sections ──
+(function() {
+  const fill    = document.getElementById('progressFill');
+  const pctDisp = document.getElementById('progressPct');
+  const dynTitle = document.getElementById('sectionTitle');
+  const dynSub   = document.getElementById('sectionSubtitle');
+  const sections = [
+    { id: 'section0', title: 'The Whole.',   sub: 'Before the first fracture.',     range: [0, 0.15] },
+    { id: 'section1', title: 'Unbinding.',   sub: 'One piece yields to another.',    range: [0.15, 0.45] },
+    { id: 'section2', title: 'Suspended.',   sub: 'Held open in perfect disorder.',  range: [0.45, 0.80] },
+    { id: 'section3', title: 'Return.',      sub: 'Every part finds its place.',     range: [0.80, 1.00] },
+  ];
+
+  function getScrollPct() {
+    const docEl = document.documentElement;
+    const scrollTop = window.pageYOffset || docEl.scrollTop || 0;
+    const scrollH   = docEl.scrollHeight - window.innerHeight;
+    return scrollH > 0 ? Math.min(scrollTop / scrollH, 1) : 0;
+  }
+
+  function update() {
+    const p = getScrollPct();
+    const pDisplay = (p * 100);
+    fill.style.width = pDisplay + '%';
+    pctDisp.textContent = pDisplay.toFixed(1) + '%';
+
+    // Find active section
+    let activeIdx = 0;
+    for (let i = 0; i < sections.length; i++) {
+      const [lo, hi] = sections[i].range;
+      if (p >= lo && p < hi) { activeIdx = i; break; }
+      if (i === sections.length - 1 && p >= hi) { activeIdx = i; }
+    }
+
+    // Update DOM sections
+    sections.forEach((s, idx) => {
+      const el = document.getElementById(s.id);
+      if (!el) return;
+      el.classList.toggle('active', idx === activeIdx);
+    });
+
+    // Update dynamic section label
+    const active = sections[activeIdx];
+    if (active) {
+      dynTitle.textContent = active.title;
+      dynSub.textContent   = active.sub;
+    }
+  }
+
+  window.addEventListener('scroll', update);
+  window.addEventListener('resize', update);
+  update();
+})();
+</script>
+
+</body>
+</html>

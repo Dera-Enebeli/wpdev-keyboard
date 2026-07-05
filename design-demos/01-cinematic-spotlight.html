@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FORM // 001 — DECONSTRUCTION</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;1,400;1,500&family=Inter:wght@300;400;500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{font-family:'Inter',sans-serif;background:#1a1a1a;color:rgba(255,255,255,0.92);overflow-x:hidden;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
+
+/* Loading Screen */
+#loading{position:fixed;inset:0;z-index:100;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#1a1a1a;transition:opacity 0.8s ease,visibility 0.8s ease;cursor:pointer}
+#loading.hidden{opacity:0;visibility:hidden}
+#loading .spinner{width:28px;height:28px;border:2px solid rgba(201,145,62,0.15);border-top-color:#c8913e;border-radius:50%;animation:spin 0.9s linear infinite;margin-bottom:20px}
+@keyframes spin{to{transform:rotate(360deg)}}
+#loading .load-text{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.25em;text-transform:uppercase;color:rgba(255,255,255,0.35)}
+#loading .load-sub{font-family:'Inter',sans-serif;font-size:12px;font-weight:300;color:rgba(255,255,255,0.2);margin-top:8px;letter-spacing:0.05em}
+
+/* Fixed Background Layers */
+#bg{position:fixed;inset:0;z-index:0;background:#1a1a1a}
+#spotlight{position:fixed;inset:0;z-index:1;pointer-events:none;
+  background:
+    radial-gradient(ellipse 70% 55% at 50% 38%, rgba(201,145,62,0.07) 0%, transparent 68%),
+    radial-gradient(ellipse 30% 22% at 50% 32%, rgba(201,145,62,0.05) 0%, transparent 55%);
+}
+#vignette{position:fixed;inset:0;z-index:1;pointer-events:none;
+  background:radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,0.35) 100%);
+}
+#grain{position:fixed;inset:0;z-index:2;pointer-events:none;opacity:0.025;
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.72' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-repeat:repeat;background-size:200px 200px;
+}
+
+/* HUD */
+#hud{position:fixed;top:0;left:0;right:0;z-index:20;padding:36px 48px 0;display:flex;justify-content:space-between;align-items:center;pointer-events:none}
+#hud .hud-left{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.2em;text-transform:uppercase;color:rgba(255,255,255,0.35)}
+#hud .hud-left span{color:#c8913e}
+#hud .hud-right{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.25em;text-transform:uppercase;color:rgba(255,255,255,0.35);display:flex;align-items:center;gap:10px}
+#hud .hud-right .dot{width:4px;height:4px;border-radius:50%;background:#c8913e;opacity:0.7}
+#hud .hud-divider{position:absolute;bottom:0;left:48px;right:48px;height:1px;background:linear-gradient(90deg,transparent 0%,rgba(201,145,62,0.12) 20%,rgba(201,145,62,0.12) 80%,transparent 100%)}
+
+/* Canvas */
+#canvas-wrapper{position:fixed;z-index:3;top:50%;left:50%;transform:translate(-50%,-50%);width:min(72vw,960px);pointer-events:none}
+#canvas-placeholder{position:relative;width:100%;padding-bottom:56.25%;background:#111;border:1px solid rgba(201,145,62,0.1);border-radius:2px;
+  box-shadow:
+    0 0 60px rgba(201,145,62,0.04),
+    0 0 120px rgba(201,145,62,0.02),
+    inset 0 0 80px rgba(0,0,0,0.4);
+  overflow:hidden;
+}
+#canvas-placeholder::after{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 50% 40%, rgba(201,145,62,0.03) 0%, transparent 60%);pointer-events:none}
+#canvas-placeholder .inner-label{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.3em;text-transform:uppercase;color:rgba(255,255,255,0.08);white-space:nowrap}
+#canvas-placeholder .inner-corner{position:absolute;width:12px;height:12px;border-color:rgba(201,145,62,0.15);border-style:solid}
+#canvas-placeholder .inner-corner.tl{top:16px;left:16px;border-width:1px 0 0 1px}
+#canvas-placeholder .inner-corner.tr{top:16px;right:16px;border-width:1px 1px 0 0}
+#canvas-placeholder .inner-corner.bl{bottom:16px;left:16px;border-width:0 0 1px 1px}
+#canvas-placeholder .inner-corner.br{bottom:16px;right:16px;border-width:0 1px 1px 0}
+
+/* Text Overlay */
+#text-overlay{position:fixed;z-index:10;bottom:13vh;left:50%;transform:translateX(-50%);text-align:center;pointer-events:none;width:90%;max-width:720px}
+.text-block{position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:100%;opacity:0;transition:opacity 0.7s ease,transform 0.7s ease;transform:translateX(-50%) translateY(12px)}
+.text-block.active{opacity:1;transform:translateX(-50%) translateY(0)}
+.text-block .sec-label{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.25em;text-transform:uppercase;color:rgba(201,145,62,0.5);margin-bottom:14px}
+.text-block .sec-label .accent{display:inline-block;width:16px;height:1px;background:#c8913e;vertical-align:middle;margin-right:10px;opacity:0.4}
+.text-block .sec-title{font-family:'EB Garamond',serif;font-size:clamp(2.2rem,5.5vw,4.2rem);font-weight:400;font-style:italic;color:rgba(255,255,255,0.92);letter-spacing:-0.01em;line-height:1.15;
+  text-shadow:0 1px 30px rgba(201,145,62,0.08);
+}
+.text-block .sec-subtitle{font-family:'Inter',sans-serif;font-size:clamp(0.9rem,1.3vw,1.1rem);font-weight:300;color:rgba(255,255,255,0.45);letter-spacing:0.03em;margin-top:12px;line-height:1.5}
+
+/* Progress */
+#progress{position:fixed;z-index:20;bottom:40px;right:48px;pointer-events:none;text-align:right}
+#progress .progress-label{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:0.2em;text-transform:uppercase;color:rgba(255,255,255,0.2);margin-bottom:6px}
+#progress .progress-row{display:flex;align-items:center;justify-content:flex-end;gap:12px}
+#progress .progress-track{width:100px;height:1px;background:rgba(255,255,255,0.06);position:relative;overflow:hidden}
+#progress .progress-fill{height:100%;width:0%;background:#c8913e;transition:width 0.15s ease-out;
+  box-shadow:0 0 6px rgba(201,145,62,0.3);
+}
+#progress .progress-value{font-family:'JetBrains Mono',monospace;font-size:12px;color:rgba(255,255,255,0.35);min-width:32px;text-align:right;letter-spacing:0.02em}
+
+/* Scroll Spacer */
+#spacer{height:400vh;position:relative;z-index:0}
+
+/* Footer */
+#footer{position:relative;z-index:15;background:#1a1a1a;padding:48px;border-top:1px solid rgba(201,145,62,0.08);display:flex;justify-content:space-between;align-items:center}
+#footer .foot-left{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.2em;text-transform:uppercase;color:rgba(255,255,255,0.2)}
+#footer .foot-left span{color:#c8913e}
+#footer .foot-right{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.1em;color:rgba(255,255,255,0.15)}
+
+/* Responsive adjustments */
+@media(max-width:768px){
+  #hud{padding:24px 24px 0}
+  #hud .hud-divider{left:24px;right:24px}
+  #canvas-wrapper{width:min(88vw,960px)}
+  #text-overlay{bottom:10vh}
+  #progress{bottom:28px;right:24px}
+  #progress .progress-track{width:72px}
+  #footer{padding:32px 24px;flex-direction:column;gap:8px;text-align:center}
+}
+</style>
+</head>
+<body>
+
+<!-- Loading Screen -->
+<div id="loading">
+  <div class="spinner"></div>
+  <div class="load-text">Loading... 0%</div>
+  <div class="load-sub">click anywhere to enter</div>
+</div>
+
+<!-- Background Layers -->
+<div id="bg"></div>
+<div id="spotlight"></div>
+<div id="vignette"></div>
+<div id="grain"></div>
+
+<!-- Canvas Placeholder -->
+<div id="canvas-wrapper">
+  <div id="canvas-placeholder">
+    <div class="inner-corner tl"></div>
+    <div class="inner-corner tr"></div>
+    <div class="inner-corner bl"></div>
+    <div class="inner-corner br"></div>
+    <div class="inner-label">canvas area &bull; 1280 × 720</div>
+  </div>
+</div>
+
+<!-- HUD -->
+<div id="hud">
+  <div class="hud-left">FORM <span>//</span> 001</div>
+  <div class="hud-right"><span class="dot"></span>DECONSTRUCTION</div>
+  <div class="hud-divider"></div>
+</div>
+
+<!-- Text Overlay -->
+<div id="text-overlay">
+  <div class="text-block active" data-section="0">
+    <div class="sec-label"><span class="accent"></span>00 // introduction</div>
+    <div class="sec-title">The Whole.</div>
+    <div class="sec-subtitle">Before the first fracture.</div>
+  </div>
+  <div class="text-block" data-section="1">
+    <div class="sec-label"><span class="accent"></span>01 // separation</div>
+    <div class="sec-title">Unbinding.</div>
+    <div class="sec-subtitle">One piece yields to another.</div>
+  </div>
+  <div class="text-block" data-section="2">
+    <div class="sec-label"><span class="accent"></span>02 // suspension</div>
+    <div class="sec-title">Suspended.</div>
+    <div class="sec-subtitle">Held open in perfect disorder.</div>
+  </div>
+  <div class="text-block" data-section="3">
+    <div class="sec-label"><span class="accent"></span>03 // return</div>
+    <div class="sec-title">Return.</div>
+    <div class="sec-subtitle">Every part finds its place.</div>
+  </div>
+</div>
+
+<!-- Progress -->
+<div id="progress">
+  <div class="progress-label">Progress</div>
+  <div class="progress-row">
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    <div class="progress-value" id="progressValue">0%</div>
+  </div>
+</div>
+
+<!-- Scroll Spacer -->
+<div id="spacer"></div>
+
+<!-- Footer -->
+<div id="footer">
+  <div class="foot-left">FORM <span>//</span> 001</div>
+  <div class="foot-right">&copy; 2026</div>
+</div>
+
+<script>
+(function() {
+  'use strict';
+
+  // Loading screen
+  const loading = document.getElementById('loading');
+  const loadText = loading.querySelector('.load-text');
+
+  let loadPercent = 0;
+  const loadInterval = setInterval(function() {
+    loadPercent += Math.floor(Math.random() * 8) + 3;
+    if (loadPercent >= 100) {
+      loadPercent = 100;
+      clearInterval(loadInterval);
+    }
+    loadText.textContent = 'Loading... ' + loadPercent + '%';
+  }, 180);
+
+  function dismissLoading() {
+    clearInterval(loadInterval);
+    loadText.textContent = 'Loading... 100%';
+    loading.classList.add('hidden');
+    document.body.style.overflow = '';
+  }
+
+  loading.addEventListener('click', dismissLoading);
+
+  // Auto-dismiss after 2.8s
+  setTimeout(function() {
+    if (!loading.classList.contains('hidden')) dismissLoading();
+  }, 2800);
+
+  // Scroll tracking
+  const blocks = document.querySelectorAll('.text-block');
+  const progressFill = document.getElementById('progressFill');
+  const progressValue = document.getElementById('progressValue');
+
+  const sections = [
+    { range: [0, 15] },
+    { range: [15, 45] },
+    { range: [45, 80] },
+    { range: [80, 100] }
+  ];
+
+  var scrollTicking = false;
+  var lastActive = -1;
+
+  function onScroll() {
+    if (!scrollTicking) {
+      window.requestAnimationFrame(function() {
+        var scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+        var docHeight = document.documentElement.scrollHeight - window.innerHeight;
+        var pct = docHeight > 0 ? (scrollTop / docHeight) * 100 : 0;
+        pct = Math.min(Math.max(pct, 0), 100);
+
+        // Update progress
+        progressFill.style.width = pct + '%';
+        progressValue.textContent = Math.round(pct) + '%';
+
+        // Determine active section
+        var activeIdx = 0;
+        for (var i = 0; i < sections.length; i++) {
+          var s = sections[i].range[0];
+          var e = sections[i].range[1];
+          if (pct >= s && pct < e) { activeIdx = i; break; }
+          if (i === sections.length - 1 && pct >= e) { activeIdx = i; }
+        }
+
+        if (activeIdx !== lastActive) {
+          lastActive = activeIdx;
+          for (var j = 0; j < blocks.length; j++) {
+            blocks[j].classList.toggle('active', j === activeIdx);
+          }
+        }
+
+        scrollTicking = false;
+      });
+      scrollTicking = true;
+    }
+  }
+
+  window.addEventListener('scroll', onScroll, { passive: true });
+  window.addEventListener('resize', onScroll, { passive: true });
+
+  // Initial state
+  document.body.style.overflow = 'hidden';
+  setTimeout(function() {
+    if (!loading.classList.contains('hidden')) {
+      document.body.style.overflow = '';
+    }
+  }, 100);
+
+  // Trigger initial calculation after fonts load
+  document.fonts.ready.then(function() {
+    onScroll();
+  });
+  setTimeout(onScroll, 300);
+
+})();
+</script>
+</body>
+</html>
